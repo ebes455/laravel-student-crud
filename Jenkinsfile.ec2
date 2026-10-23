@@ -24,13 +24,13 @@ pipeline {
         }
         stage('Deploy to EC2') {
             steps {
-                sshagent(['ec2-deploy-key']) {
+                withCredentials([sshUserPrivateKey(credentialsId: 'ec2-deploy-key', keyFileVariable: 'SSH_KEY')]) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo mkdir -p $DEPLOY_DIR && sudo chown -R $EC2_USER:www-data $DEPLOY_DIR"
-                        rsync -avz -e "ssh -o StrictHostKeyChecking=no" --exclude='.git' --exclude='vendor' ./ $EC2_USER@$EC2_IP:$DEPLOY_DIR/
-                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "cd $DEPLOY_DIR && composer install --no-interaction --prefer-dist --optimize-autoloader && cp -n .env.example .env || true"
-                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "cd $DEPLOY_DIR && touch database/database.sqlite && php artisan key:generate --force && php artisan migrate:fresh --force && php artisan config:clear"
-                        ssh -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo chown -R www-data:www-data $DEPLOY_DIR && sudo chmod -R 775 $DEPLOY_DIR/storage $DEPLOY_DIR/bootstrap/cache $DEPLOY_DIR/database && sudo systemctl restart nginx php8.4-fpm"
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo mkdir -p $DEPLOY_DIR && sudo chown -R $EC2_USER:www-data $DEPLOY_DIR"
+                        rsync -avz -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" --exclude='.git' --exclude='vendor' ./ $EC2_USER@$EC2_IP:$DEPLOY_DIR/
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "cd $DEPLOY_DIR && composer install --no-interaction --prefer-dist --optimize-autoloader && cp -n .env.example .env || true"
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "cd $DEPLOY_DIR && touch database/database.sqlite && php artisan key:generate --force && php artisan migrate:fresh --force && php artisan config:clear"
+                        ssh -i $SSH_KEY -o StrictHostKeyChecking=no $EC2_USER@$EC2_IP "sudo chown -R www-data:www-data $DEPLOY_DIR && sudo chmod -R 775 $DEPLOY_DIR/storage $DEPLOY_DIR/bootstrap/cache $DEPLOY_DIR/database && sudo systemctl restart nginx php8.4-fpm"
                     '''
                 }
             }
